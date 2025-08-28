@@ -24,7 +24,7 @@ class WalletService {
   Future<void> initialize() async {
     try {
       _web3App = await Web3App.createInstance(
-        projectId: 'YOUR_PROJECT_ID', // Replace with your WalletConnect project ID
+        projectId: 'd5e96398f3b7dde6fb9f5eddfab11e15', // WalletConnect project ID
         metadata: const PairingMetadata(
           name: 'MetaMask Flutter App',
           description: 'A simple Flutter app with MetaMask integration',
@@ -183,7 +183,7 @@ class WalletService {
       }
 
       final response = await http.post(
-        Uri.parse('https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY'), // Replace with your Alchemy key
+        Uri.parse('https://eth-mainnet.g.alchemy.com/v2/demo'), // Using Alchemy demo endpoint
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'jsonrpc': '2.0',
