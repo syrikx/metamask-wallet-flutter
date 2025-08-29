@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import 'remote_logger.dart';
 
 class PhantomService {
   static PhantomService? _instance;
@@ -13,6 +14,9 @@ class PhantomService {
   bool _isConnected = false;
   String? _connectedPublicKey;
   String? _status;
+  
+  // Remote logger for debugging
+  final RemoteLogger _logger = RemoteLogger.instance;
 
   // Getters
   bool get isInitialized => true;
@@ -23,12 +27,17 @@ class PhantomService {
   // Initialize (no-op for URL-based implementation)
   Future<void> initialize() async {
     log('Phantom service initialized (URL-based)');
+    _logger.phantom('service_initialized', {
+      'method': 'URL-based',
+      'timestamp': DateTime.now().toIso8601String(),
+    });
   }
 
   // Connect to Phantom wallet using deep link
   Future<void> connectWallet() async {
     try {
       _status = 'Opening Phantom wallet...';
+      _logger.phantomConnection('start');
       
       // Create a connection request URL
       const String appUrl = 'https://metamask-wallet-flutter.app';
@@ -42,11 +51,18 @@ class PhantomService {
       );
       
       log('Launching Phantom with URI: $phantomUri');
+      _logger.phantomConnection('uri_generated', uri: phantomUri.toString());
+      
+      // Check if Phantom app can be launched
+      final canLaunch = await canLaunchUrl(phantomUri);
+      _logger.phantomConnection('can_launch_check', canLaunch: canLaunch);
       
       // Try to launch Phantom app
-      if (await canLaunchUrl(phantomUri)) {
+      if (canLaunch) {
+        _logger.phantomConnection('launching_app', uri: phantomUri.toString());
         await launchUrl(phantomUri, mode: LaunchMode.externalApplication);
         
+        _logger.phantomConnection('app_launched_waiting');
         // Simulate connection for demo purposes
         // In a real app, you'd handle the redirect and parse the response
         await Future.delayed(const Duration(seconds: 2));
@@ -57,8 +73,11 @@ class PhantomService {
       } else {
         // Fallback to Phantom web app
         final Uri webUri = Uri.parse('https://phantom.app/ul/v1/connect?app_url=$appUrl');
+        _logger.phantomConnection('fallback_to_web', uri: webUri.toString());
+        
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
         
+        _logger.phantomConnection('web_launched_waiting');
         // Mock connection after web redirect
         await Future.delayed(const Duration(seconds: 3));
         _mockSuccessfulConnection();
@@ -67,6 +86,7 @@ class PhantomService {
     } catch (e) {
       _status = 'Failed to connect to Phantom: $e';
       log('Phantom connection error: $e');
+      _logger.phantomConnection('error', error: e.toString());
       rethrow;
     }
   }
@@ -77,6 +97,8 @@ class PhantomService {
     _connectedPublicKey = 'DemoPhantomPublicKey123456789';
     _status = 'Connected to Phantom wallet';
     log('Phantom wallet connected (demo mode)');
+    
+    _logger.phantomConnection('success', account: _connectedPublicKey);
   }
 
   // Disconnect wallet
@@ -119,10 +141,12 @@ class PhantomService {
   Future<String> signMessage(String message) async {
     try {
       if (!isConnected) {
+        _logger.phantomSign('not_connected');
         throw Exception('Wallet not connected');
       }
 
       _status = 'Opening Phantom for message signing...';
+      _logger.phantomSign('start', message: message);
       
       // Create sign message deep link
       final Uri signUri = Uri.parse(
@@ -132,14 +156,17 @@ class PhantomService {
       );
       
       log('Launching Phantom for signing: $signUri');
+      _logger.phantomSign('uri_generated', message: signUri.toString());
       
       if (await canLaunchUrl(signUri)) {
+        _logger.phantomSign('launching_app');
         await launchUrl(signUri, mode: LaunchMode.externalApplication);
       } else {
         // Fallback to web
         final Uri webSignUri = Uri.parse(
           'https://phantom.app/ul/v1/signMessage?message=${Uri.encodeComponent(message)}'
         );
+        _logger.phantomSign('fallback_to_web');
         await launchUrl(webSignUri, mode: LaunchMode.externalApplication);
       }
       
@@ -149,11 +176,13 @@ class PhantomService {
       
       _status = 'Message signed successfully';
       log('Message signed: $mockSignature');
+      _logger.phantomSign('success', signature: mockSignature);
       return mockSignature;
       
     } catch (e) {
       _status = 'Failed to sign message: $e';
       log('Message signing error: $e');
+      _logger.phantomSign('error', error: e.toString());
       rethrow;
     }
   }

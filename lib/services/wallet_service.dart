@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:walletconnect_flutter_v2/walletconnect_flutter_v2.dart';
 import 'package:http/http.dart' as http;
+import 'remote_logger.dart';
 
 class WalletService {
   static WalletService? _instance;
@@ -13,6 +14,9 @@ class WalletService {
   Web3App? _web3App;
   String? _currentSession;
   String? _currentAccount;
+  
+  // Remote logger for debugging
+  final RemoteLogger _logger = RemoteLogger.instance;
 
   // Getters
   bool get isInitialized => _web3App != null;
@@ -69,11 +73,13 @@ class WalletService {
 
       final uri = connectResponse.uri;
       log('Generated WalletConnect URI: ${uri.toString()}');
+      _logger.metamaskConnection('uri_generated', uri: uri.toString());
       
       // Launch MetaMask with the connection URI
       await _launchMetaMask(uri.toString());
       
       log('Waiting for MetaMask connection approval...');
+      _logger.metamaskConnection('waiting_for_approval');
       
     } catch (e) {
       log('Failed to connect wallet: $e');
