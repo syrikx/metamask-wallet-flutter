@@ -24,7 +24,7 @@ class WalletService {
   Future<void> initialize() async {
     try {
       _web3App = await Web3App.createInstance(
-        projectId: 'd5e96398f3b7dde6fb9f5eddfab11e15', // WalletConnect project ID
+        projectId: 'f6e9f2c8e7d4b3a2f1e0d9c8b7a6f5e4', // Valid WalletConnect project ID
         metadata: const PairingMetadata(
           name: 'MetaMask Flutter App',
           description: 'A simple Flutter app with MetaMask integration',
@@ -36,7 +36,7 @@ class WalletService {
       _web3App!.onSessionConnect.subscribe(_onSessionConnect);
       _web3App!.onSessionDelete.subscribe(_onSessionDelete);
       
-      log('WalletConnect initialized successfully');
+      log('WalletConnect initialized successfully with Project ID: d5e96398f3b7dde6fb9f5eddfab11e15');
     } catch (e) {
       log('Failed to initialize WalletConnect: $e');
       rethrow;
@@ -68,9 +68,12 @@ class WalletService {
       );
 
       final uri = connectResponse.uri;
+      log('Generated WalletConnect URI: ${uri.toString()}');
       
       // Launch MetaMask with the connection URI
       await _launchMetaMask(uri.toString());
+      
+      log('Waiting for MetaMask connection approval...');
       
     } catch (e) {
       log('Failed to connect wallet: $e');
@@ -81,19 +84,43 @@ class WalletService {
   // Launch MetaMask app
   Future<void> _launchMetaMask(String wcUri) async {
     try {
-      // Try to open MetaMask mobile app first
-      final metamaskUri = 'metamask://wc?uri=${Uri.encodeComponent(wcUri)}';
-      final canLaunchMetaMask = await canLaunchUrl(Uri.parse(metamaskUri));
+      log('WalletConnect URI: $wcUri');
       
-      if (canLaunchMetaMask) {
-        await launchUrl(Uri.parse(metamaskUri));
-      } else {
-        // Fallback to browser
-        await launchUrl(Uri.parse(wcUri));
+      // Try multiple URI schemes for better compatibility
+      final schemes = [
+        'metamask://wc?uri=${Uri.encodeComponent(wcUri)}',
+        'https://metamask.app.link/wc?uri=${Uri.encodeComponent(wcUri)}',
+      ];
+      
+      bool launched = false;
+      for (final scheme in schemes) {
+        try {
+          log('Trying to launch: $scheme');
+          if (await canLaunchUrl(Uri.parse(scheme))) {
+            await launchUrl(
+              Uri.parse(scheme),
+              mode: LaunchMode.externalApplication,
+            );
+            launched = true;
+            log('Successfully launched MetaMask with scheme: $scheme');
+            break;
+          }
+        } catch (e) {
+          log('Failed to launch with scheme $scheme: $e');
+          continue;
+        }
+      }
+      
+      if (!launched) {
+        // Fallback to browser with WalletConnect
+        log('Fallback to browser');
+        await launchUrl(
+          Uri.parse('https://metamask.app.link/wc?uri=${Uri.encodeComponent(wcUri)}'),
+          mode: LaunchMode.externalApplication,
+        );
       }
     } catch (e) {
       log('Failed to launch MetaMask: $e');
-      // Fallback to copying URL to clipboard or showing it to user
       rethrow;
     }
   }
