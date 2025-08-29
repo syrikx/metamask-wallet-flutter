@@ -39,6 +39,9 @@ dependencies:
   walletconnect_flutter_v2: ^2.3.1
   url_launcher: ^6.2.5
   http: ^1.2.0
+  
+  # Solana Phantom wallet integration (URL-based)
+  # Using URL launcher for Phantom deep links
 
 dev_dependencies:
   flutter_test:
